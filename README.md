@@ -1,24 +1,68 @@
-This repository is no longer maintained, as Gym is not longer maintained and all future maintenance of it will occur in the replacing [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) library. You can contribute Gymnasium examples to the Gymnasium repository and docs directly if you would like to. If you'd like to learn more about the transition from Gym to Gymnasium, you can read more about it [here](https://farama.org/Announcing-The-Farama-Foundation).
+# Gynasium Cutting Stock Environment
 
-# Gym Examples
-Some simple examples of Gym environments and wrappers.
-For some explanations of these examples, see the [Gym documentation](https://gymnasium.farama.org).
+## How to install
+    
+```bash
+pip install git+https://github.com/martinakaduc/gym-cutting-stock
+```
 
-### Environments
-This repository hosts the examples that are shown [on the environment creation documentation](https://gymnasium.farama.org/tutorials/environment_creation/).
-- `GridWorldEnv`: Simplistic implementation of gridworld environment
+## Sample code for Random Policy
 
-### Wrappers
-This repository hosts the examples that are shown [on wrapper documentation](https://gymnasium.farama.org/api/wrappers/).
-- `ClipReward`: A `RewardWrapper` that clips immediate rewards to a valid range
-- `DiscreteActions`: An `ActionWrapper` that restricts the action space to a finite subset
-- `RelativePosition`: An `ObservationWrapper` that computes the relative position between an agent and a target
-- `ReacherRewardWrapper`: Allow us to weight the reward terms for the reacher environment
+```python
+import gym_cutting_stock
+import random
+import gymnasium as gym
+env = gym.make("gym_cutting_stock/CuttingStock-v0", render_mode="human")
 
-### Contributing
-If you would like to contribute, follow these steps:
-- Fork this repository
-- Clone your fork
-- Set up pre-commit via `pre-commit install`
 
-PRs may require accompanying PRs in [the documentation repo](https://github.com/Farama-Foundation/Gymnasium/tree/main/docs).
+def random_policy(observation, info):
+    list_prods = observation["products"]
+
+    prod_size = [0, 0]
+    stock_idx = -1
+    pos_x, pos_y = 0, 0
+
+    # Pick a product that has quality > 0
+    for prod in list_prods:
+        if prod["quantity"] > 0:
+            prod_size = prod["size"]
+
+            # Random choice a stock idx
+            pos_x, pos_y = None, None
+            for _ in range(100):
+                # Random choice a stock
+                stock_idx = random.randint(0, len(observation["stocks"]) - 1)
+                stock = observation["stocks"][stock_idx]
+
+                # Random choice a position
+                stock_w, stock_h = stock.shape
+                prod_w, prod_h = prod_size
+
+                if stock_w < prod_w or stock_h < prod_h:
+                    continue
+
+                pos_x = random.randint(0, stock_w - prod_w)
+                pos_y = random.randint(0, stock_h - prod_h)
+                break
+
+            if pos_x is not None and pos_y is not None:
+                break
+
+    return {
+        "stock_idx": stock_idx,
+        "size": prod_size,
+        "position": (pos_x, pos_y)
+    }
+
+
+if __name__ == "__main__":
+    observation, info = env.reset(seed=42)
+    for _ in range(200):
+        action = random_policy(observation, info)
+        observation, reward, terminated, truncated, info = env.step(action)
+
+        if terminated or truncated:
+            observation, info = env.reset()
+
+env.close()
+```
