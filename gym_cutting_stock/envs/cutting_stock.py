@@ -1,7 +1,7 @@
-import pygame
-import numpy as np
-import matplotlib as mpl
 import gymnasium as gym
+import matplotlib as mpl
+import numpy as np
+import pygame
 from gymnasium import spaces
 from matplotlib import colormaps
 
@@ -29,26 +29,28 @@ class CuttingStockEnv(gym.Env):
         self.num_stocks = num_stocks
         self.max_product_type = max_product_type
         self.max_product_per_type = max_product_per_type
+        self.cutted_stocks = np.full((num_stocks,), fill_value=0, dtype=int)
 
         # Stocks space
-        space_constaints = np.zeros(shape=(max_w, max_h))
-        space_constaints[:] = max_product_type + 1
+        upper = np.full(
+            shape=(max_w, max_h), fill_value=max_product_type + 2, dtype=int
+        )
+        lower = np.full(shape=(max_w, max_h), fill_value=-2, dtype=int)
         self.observation_space = spaces.Dict(
             {
                 "stocks": spaces.Tuple(
-                    [spaces.MultiDiscrete(space_constaints)] * num_stocks, seed=seed
+                    [spaces.MultiDiscrete(upper, start=lower)] * num_stocks, seed=seed
                 ),
-                # Product index starts from 1
+                # Product index starts from 0
                 "products": spaces.Sequence(
                     spaces.Dict(
                         {
-                            "size": spaces.Box(
-                                low=np.array([1, 1]),
-                                high=np.array([max_w, max_h]),
-                                shape=(2,),
-                                dtype=int,
+                            "size": spaces.MultiDiscrete(
+                                np.array([max_w, max_h]), start=np.array([1, 1])
                             ),
-                            "quantity": spaces.Discrete(max_product_per_type),
+                            "quantity": spaces.Discrete(
+                                max_product_per_type + 1, start=0
+                            ),
                         }
                     ),
                     seed=seed,
@@ -96,20 +98,22 @@ class CuttingStockEnv(gym.Env):
         return {"stocks": self._stocks, "products": self._products}
 
     def _get_info(self):
-        having_products = [s.sum() > 0 for s in self._stocks]
-        return {"filled_ratio": np.mean(having_products)}
+        return {"filled_ratio": np.mean(self.cutted_stocks).item()}
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
+        self.cutted_stocks = np.full((self.num_stocks,), fill_value=0, dtype=int)
         self._stocks = []
 
         # Randomize stocks
         for _ in range(self.num_stocks):
             width = np.random.randint(low=self.min_w, high=self.max_w + 1)
             height = np.random.randint(low=self.min_h, high=self.max_h + 1)
-            stock = np.zeros(shape=(width, height), dtype=int)
+            stock = np.full(shape=(self.max_w, self.max_h), fill_value=-2, dtype=int)
+            stock[:width, :height] = -1  # Empty cells are marked as -1
             self._stocks.append(stock)
+        self._stocks = tuple(self._stocks)
 
         # Randomize products
         self._products = []
@@ -120,6 +124,7 @@ class CuttingStockEnv(gym.Env):
             quantity = np.random.randint(low=1, high=self.max_product_per_type + 1)
             product = {"size": np.array([width, height]), "quantity": quantity}
             self._products.append(product)
+        self._products = tuple(self._products)
 
         observation = self._get_obs()
         info = self._get_info()
@@ -144,23 +149,26 @@ class CuttingStockEnv(gym.Env):
                 if product["quantity"] == 0:
                     continue
 
-                product_idx = i + 1  # Product index starts from 1
+                product_idx = i  # Product index starts from 0
                 break
 
         if product_idx is not None:
             if 0 <= stock_idx < self.num_stocks:
                 stock = self._stocks[stock_idx]
                 # Check if the product fits in the stock
+                stock_width = np.sum(np.any(stock != -2, axis=1))
+                stock_height = np.sum(np.any(stock != -2, axis=0))
                 if (
                     x >= 0
                     and y >= 0
-                    and x + width <= stock.shape[0]
-                    and y + height <= stock.shape[1]
+                    and x + width <= stock_width
+                    and y + height <= stock_height
                 ):
                     # Check if the position is empty
-                    if np.all(stock[x : x + width, y : y + height] == 0):
+                    if np.all(stock[x : x + width, y : y + height] == -1):
+                        self.cutted_stocks[stock_idx] = 1
                         stock[x : x + width, y : y + height] = product_idx
-                        self._products[product_idx - 1]["quantity"] -= 1
+                        self._products[product_idx]["quantity"] -= 1
 
         # An episode is done iff the all product quantities are 0
         terminated = all([product["quantity"] == 0 for product in self._products])
@@ -188,6 +196,7 @@ class CuttingStockEnv(gym.Env):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
+            pygame.display.set_caption("Cutting Stock Environment")
             self.window = pygame.display.set_mode(window_size)
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
@@ -203,9 +212,12 @@ class CuttingStockEnv(gym.Env):
 
         # First we draw the stocks with the products
         for i, stock in enumerate(self._stocks):
+            # Compute the actual stock width and height
+            # Outside of the stock, we have empty cells (-2)
+            stock_width = np.sum(np.any(stock != -2, axis=1))
+            stock_height = np.sum(np.any(stock != -2, axis=0))
+
             # Fill the stocks wuth grey color
-            stock_width = stock.shape[0]
-            stock_height = stock.shape[1]
             pygame.draw.rect(
                 canvas,
                 (128, 128, 128),
@@ -220,7 +232,7 @@ class CuttingStockEnv(gym.Env):
 
             for x in range(stock.shape[0]):
                 for y in range(stock.shape[1]):
-                    if stock[x, y] > 0:
+                    if stock[x, y] > -1:
                         color = list_colors[stock[x, y]][:3]
                         color = (
                             int(color[0] * 255),

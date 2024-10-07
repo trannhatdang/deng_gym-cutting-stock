@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gym_cutting_stock"
+version = "0.0.1"
+authors = [
+  { name="Martin Nguyen", email="nqduc@cs.stanford.edu" },
+]
+description = "A package for Cutting Stock Environment"
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/martinakaduc/gym_cutting_stock"
+
+[tool.hatch.build.targets.wheel]
+      packages = ["gym_cutting_stock"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
