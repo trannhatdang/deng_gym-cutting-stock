@@ -98,7 +98,18 @@ class CuttingStockEnv(gym.Env):
         return {"stocks": self._stocks, "products": self._products}
 
     def _get_info(self):
-        return {"filled_ratio": np.mean(self.cutted_stocks).item()}
+        filled_ratio = np.mean(self.cutted_stocks).item()
+        trim_loss = []
+
+        for sid, stock in enumerate(self._stocks):
+            if self.cutted_stocks[sid] == 0:
+                continue
+            tl = (stock == -1).sum() / (stock != -2).sum()
+            trim_loss.append(tl)
+
+        trim_loss = np.mean(trim_loss).item() if trim_loss else 1
+
+        return {"filled_ratio": filled_ratio, "trim_loss": trim_loss}
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
@@ -145,7 +156,9 @@ class CuttingStockEnv(gym.Env):
         # Check if the product is in the product list
         product_idx = None
         for i, product in enumerate(self._products):
-            if np.array_equal(product["size"], size):
+            if np.array_equal(product["size"], size) or np.array_equal(
+                product["size"], size[::-1]
+            ):
                 if product["quantity"] == 0:
                     continue
 
