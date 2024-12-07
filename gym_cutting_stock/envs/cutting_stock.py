@@ -1,9 +1,16 @@
+import random
+
 import gymnasium as gym
 import matplotlib as mpl
 import numpy as np
 import pygame
 from gymnasium import spaces
 from matplotlib import colormaps
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
 
 
 class CuttingStockEnv(gym.Env):
@@ -30,6 +37,9 @@ class CuttingStockEnv(gym.Env):
         self.max_product_type = max_product_type
         self.max_product_per_type = max_product_per_type
         self.cutted_stocks = np.full((num_stocks,), fill_value=0, dtype=int)
+
+        # Set seed explicitly
+        set_seed(seed)
 
         # Stocks space
         upper = np.full(
