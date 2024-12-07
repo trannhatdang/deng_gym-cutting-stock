@@ -121,9 +121,11 @@ class CuttingStockEnv(gym.Env):
 
         return {"filled_ratio": filled_ratio, "trim_loss": trim_loss}
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=42, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
+        set_seed(seed)
+
         self.cutted_stocks = np.full((self.num_stocks,), fill_value=0, dtype=int)
         self._stocks = []
 
