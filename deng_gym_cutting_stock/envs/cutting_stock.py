@@ -13,7 +13,7 @@ def set_seed(seed):
     np.random.seed(seed)
 
 
-class CuttingStockEnv(gym.Env):
+class DengCuttingStockEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 5}
 
     def __init__(
@@ -144,6 +144,41 @@ class CuttingStockEnv(gym.Env):
         for _ in range(num_type_products):
             width = np.random.randint(low=1, high=self.min_w + 1)
             height = np.random.randint(low=1, high=self.min_h + 1)
+            quantity = np.random.randint(low=1, high=self.max_product_per_type + 1)
+            product = {"size": np.array([width, height]), "quantity": quantity}
+            self._products.append(product)
+        self._products = tuple(self._products)
+
+        observation = self._get_obs()
+        info = self._get_info()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, info
+    
+    def zero_case_reset(self, in_stock, in_prod):
+        # We need the following line to seed self.np_random
+        super().reset(seed=42)
+
+        self.cutted_stocks = np.full((self.num_stocks,), fill_value=0, dtype=int)
+        self._stocks = []
+
+        # Randomize stocks
+        for _ in range(self.num_stocks):
+            width = 0
+            height = 0
+            stock = np.full(shape=(self.max_w, self.max_h), fill_value=-2, dtype=int)
+            stock[:width, :height] = -1  # Empty cells are marked as -1
+            self._stocks.append(stock)
+        self._stocks = tuple(self._stocks)
+
+        # Randomize products
+        self._products = []
+        num_type_products = np.random.randint(low=1, high=self.max_product_type)
+        for _ in range(num_type_products):
+            width = 0
+            height = 0
             quantity = np.random.randint(low=1, high=self.max_product_per_type + 1)
             product = {"size": np.array([width, height]), "quantity": quantity}
             self._products.append(product)
