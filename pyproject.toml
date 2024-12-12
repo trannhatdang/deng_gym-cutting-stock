@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gym_cutting_stock"
+name = "deng_gym_cutting_stock"
 version = "0.0.2"
 authors = [
   { name="Martin Nguyen", email="nqduc@cs.stanford.edu" },
