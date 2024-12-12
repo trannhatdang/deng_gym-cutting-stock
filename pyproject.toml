@@ -14,10 +14,10 @@ requires-python = ">=3.8"
 dynamic = ["dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/martinakaduc/gym_cutting_stock"
+Homepage = "https://github.com/trannhatdang/deng_gym-cutting-stock"
 
 [tool.hatch.build.targets.wheel]
-      packages = ["gym_cutting_stock"]
+      packages = ["deng_gym_cutting_stock"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
