@@ -1,1 +1,1 @@
-from gym_cutting_stock.envs.cutting_stock import CuttingStockEnv
+from gym_cutting_stock.envs.deng_cutting_stock import DengCuttingStockEnv
